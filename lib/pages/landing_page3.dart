@@ -10,12 +10,27 @@ class LandingPage3 extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // Header logo
-            Image.asset(
-              "assets/images/logo.png",
-              height: 140,
+          children: [ // <- pastikan children: [] ada
+            SizedBox(
+              height: 160, // sesuaikan tinggi dengan logo
+              child: Stack(
+                children: [
+                  // Konten kosong di belakang (bisa diisi nanti)
+                  Container(),
+
+                  // Logo di kanan atas, mirip halaman masuk
+                  Positioned(
+                    top: -10,
+                    right: -55,
+                    child: Image.asset(
+                      "assets/images/logo.png",
+                      height: 140,
+                    ),
+                  ),
+                ],
+              ),
             ),
+
             const SizedBox(height: 30),
 
             // Ilustrasi dalam kotak biru

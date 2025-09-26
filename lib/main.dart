@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'pages/landing_page1.dart';
 import 'pages/landing_page2.dart';
 import 'pages/landing_page3.dart';
-import 'pages/home_page.dart';
+import 'pages/masuk_page.dart';
+import 'pages/daftar_page.dart'; 
+import 'pages/beranda_page1.dart'; 
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
@@ -23,7 +25,9 @@ class MyApp extends StatelessWidget {
       ),
       home: const LandingScreen(),
       routes: {
-        '/home': (context) => const HomePage(),
+        '/masuk': (context) => const MasukPage(),
+        '/daftar': (context) => const DaftarPage(), 
+        '/beranda': (context) => const BerandaPage1(),
       },
     );
   }
@@ -90,7 +94,7 @@ class _LandingScreenState extends State<LandingScreen> {
               ),
               onPressed: () {
                 if (_currentIndex == 2) {
-                  Navigator.pushReplacementNamed(context, '/home');
+                  Navigator.pushReplacementNamed(context, '/masuk');
                 } else {
                   _controller.nextPage(
                     duration: const Duration(milliseconds: 400),
