@@ -1,7 +1,76 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-class DaftarPage extends StatelessWidget {
+class DaftarPage extends StatefulWidget {
   const DaftarPage({super.key});
+
+  @override
+  State<DaftarPage> createState() => _DaftarPageState();
+}
+
+class _DaftarPageState extends State<DaftarPage> {
+  // Controller input
+  final nikController = TextEditingController();
+  final namaController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final noTelpController = TextEditingController();
+  final jenisKelaminController = TextEditingController();
+
+  Future<void> register() async {
+    // Validasi simple
+    if (nikController.text.isEmpty ||
+        namaController.text.isEmpty ||
+        emailController.text.isEmpty ||
+        passwordController.text.isEmpty ||
+        noTelpController.text.isEmpty ||
+        jenisKelaminController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Semua field harus diisi!")),
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse("http://10.0.2.2:8000/api/register"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json", // ganti ke form-data kalau perlu
+        },
+        body: jsonEncode({
+          "nik": nikController.text,
+          "name": namaController.text,
+          "email": emailController.text,
+          "password": passwordController.text,
+          "no_telp": noTelpController.text,
+          "jenis_kelamin": jenisKelaminController.text,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Berhasil daftar: ${data['message'] ?? 'OK'}")),
+        );
+        Navigator.pushReplacementNamed(context, '/masuk');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Gagal daftar: ${data['message'] ?? response.body}",
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +92,6 @@ class DaftarPage extends StatelessWidget {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Logo pojok kanan atas
                   Positioned(
                     top: 20,
                     right: -30,
@@ -32,8 +100,6 @@ class DaftarPage extends StatelessWidget {
                       height: 120,
                     ),
                   ),
-
-                  // Gambar setengah lingkaran di kiri bawah
                   Positioned(
                     bottom: -90,
                     left: -20,
@@ -58,7 +124,6 @@ class DaftarPage extends StatelessWidget {
 
             const SizedBox(height: 120),
 
-            // Judul
             const Text(
               "Daftar",
               style: TextStyle(
@@ -70,36 +135,29 @@ class DaftarPage extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            // Form Input
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                   _buildTextField("NIK"),
+                  _buildTextField("NIK", controller: nikController),
                   const SizedBox(height: 12),
-                  _buildTextField("Nama Lengkap"),
+                  _buildTextField("Nama Lengkap", controller: namaController),
                   const SizedBox(height: 12),
-                  _buildTextField("Email"),
+                  _buildTextField("Email", controller: emailController),
                   const SizedBox(height: 12),
-                  _buildTextField("Sandi", obscure: true),
+                  _buildTextField("Sandi",
+                      obscure: true, controller: passwordController),
                   const SizedBox(height: 12),
-                  _buildTextField("No Telepon"),
+                  _buildTextField("No Telepon", controller: noTelpController),
                   const SizedBox(height: 12),
-                  _buildTextField("Jenis Kelamin"),
-                  const SizedBox(height: 12),
-
+                  _buildTextField("Jenis Kelamin",
+                      controller: jenisKelaminController),
                   const SizedBox(height: 30),
 
-                  // Tombol Daftar
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Akun berhasil dibuat!")),
-                        );
-                        Navigator.pushReplacementNamed(context, '/masuk');
-                      },
+                      onPressed: register,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0077B6),
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -116,7 +174,6 @@ class DaftarPage extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // Link ke Masuk
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -146,8 +203,10 @@ class DaftarPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(String hint, {bool obscure = false}) {
+  Widget _buildTextField(String hint,
+      {bool obscure = false, TextEditingController? controller}) {
     return TextField(
+      controller: controller,
       obscureText: obscure,
       decoration: InputDecoration(
         hintText: hint,

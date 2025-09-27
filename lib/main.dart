@@ -27,7 +27,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/masuk': (context) => const MasukPage(),
         '/daftar': (context) => const DaftarPage(), 
-        '/beranda': (context) => const BerandaPage1(),
       },
     );
   }

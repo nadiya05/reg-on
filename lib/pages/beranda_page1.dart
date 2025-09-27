@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class BerandaPage1 extends StatefulWidget {
-  const BerandaPage1({super.key});
+  final Map<String, dynamic> user; // ⬅️ user dari API
+
+  const BerandaPage1({super.key, required this.user});
 
   @override
   State<BerandaPage1> createState() => _BerandaPage1State();
@@ -55,12 +57,17 @@ class _BerandaPage1State extends State<BerandaPage1> {
                       backgroundImage: AssetImage("assets/images/profile.jpg"),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      "Ikanurjannah",
-                      style: TextStyle(
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.user['name'] ?? 'Pengguna', // ⬅️ nama dari API
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    Text(
+                      widget.user['nik'] ?? 'NIK tidak ada', // contoh tambahan
+                      style: const TextStyle(color: Colors.grey),
                     ),
                     const Text(
                       "lihat akun",
@@ -104,10 +111,10 @@ class _BerandaPage1State extends State<BerandaPage1> {
 
               // Logout
               ListTile(
-                leading: Icon(Icons.logout, color: Colors.grey),
-                title: Text("Keluar"),
+                leading: const Icon(Icons.logout, color: Colors.grey),
+                title: const Text("Keluar"),
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(context, '/masuk'); 
                 },
               ),
             ],
