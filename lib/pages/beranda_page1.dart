@@ -141,12 +141,14 @@ class _BerandaPage1State extends State<BerandaPage1> {
             ),
           ),
 
-          SingleChildScrollView(
+Positioned.fill(
+        top: 100, // kasih jarak biar tidak ketimpa header
+        child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  const SizedBox(height: 120),
+                  const SizedBox(height: 15),
 
                   // Carousel
                   _buildCarousel(),
@@ -176,6 +178,7 @@ class _BerandaPage1State extends State<BerandaPage1> {
               ),
             ),
           ),
+),
 
           // Header menu + logo
           Positioned(
