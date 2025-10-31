@@ -40,7 +40,7 @@ class LandingPage3 extends StatelessWidget {
                   width: 331,
                   height: 331,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0077B6),
+                    color: Color.fromRGBO(0, 119, 182, 1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
@@ -58,11 +58,11 @@ class LandingPage3 extends StatelessWidget {
             // Teks rata tengah
             const Center(
               child: Text(
-                "Hello Penduduk!",
+                "Halo Penduduk Lohbener!",
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0077B6),
+                  color: Color.fromRGBO(0, 119, 182, 1),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -70,7 +70,7 @@ class LandingPage3 extends StatelessWidget {
             const SizedBox(height: 16),
             const Center(
               child: Text(
-                "Jika ingin melakukan administrasi melalui website kami silahkan daftar terlebih dahulu",
+                "Jika ingin melakukan administrasi melalui aplikasi kami silahkan daftar terlebih dahulu",
                 style: TextStyle(fontSize: 16, color: Colors.black87),
                 textAlign: TextAlign.center,
               ),

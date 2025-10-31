@@ -56,7 +56,7 @@ class LandingPage1 extends StatelessWidget {
 
             // teks rata tengah
             const Text(
-              "Hello Penduduk!",
+              "Halo Penduduk Lohbener!",
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -66,7 +66,7 @@ class LandingPage1 extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              "Selamat datang di website kami, pelayanan dokumen kecamatan Lohbener!!",
+              "Selamat datang di aplikasi kami, pelayanan dokumen kecamatan Lohbener!!",
               style: TextStyle(fontSize: 16, color: Colors.black87),
               textAlign: TextAlign.center,
             ),

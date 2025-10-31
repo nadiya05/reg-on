@@ -135,42 +135,72 @@ class _DaftarPageState extends State<DaftarPage> {
 
             const SizedBox(height: 30),
 
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  _buildTextField("NIK", controller: nikController),
-                  const SizedBox(height: 12),
-                  _buildTextField("Nama Lengkap", controller: namaController),
-                  const SizedBox(height: 12),
-                  _buildTextField("Email", controller: emailController),
-                  const SizedBox(height: 12),
-                  _buildTextField("Sandi",
-                      obscure: true, controller: passwordController),
-                  const SizedBox(height: 12),
-                  _buildTextField("No Telepon", controller: noTelpController),
-                  const SizedBox(height: 12),
-                  _buildTextField("Jenis Kelamin",
-                      controller: jenisKelaminController),
-                  const SizedBox(height: 30),
+Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 24),
+  child: Column(
+    children: [
+      _buildTextField("NIK", controller: nikController),
+      const SizedBox(height: 12),
+      _buildTextField("Nama Lengkap", controller: namaController),
+      const SizedBox(height: 12),
+      _buildTextField("Email", controller: emailController),
+      const SizedBox(height: 12),
+      _buildTextField("Sandi",
+          obscure: true, controller: passwordController),
+      const SizedBox(height: 12),
+      _buildTextField("No Telepon", controller: noTelpController),
+      const SizedBox(height: 12),
 
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: register,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0077B6),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text(
-                        "Daftar",
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                    ),
-                  ),
+      // 🔽 Dropdown Jenis Kelamin
+      DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          hintText: "Jenis Kelamin",
+          contentPadding: const EdgeInsets.symmetric(
+              vertical: 14, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+        ),
+        value: jenisKelaminController.text.isEmpty
+            ? null
+            : jenisKelaminController.text,
+        items: const [
+          DropdownMenuItem(
+            value: "Wanita",
+            child: Text("Wanita"),
+          ),
+          DropdownMenuItem(
+            value: "Pria",
+            child: Text("Pria"),
+          ),
+        ],
+        onChanged: (value) {
+          setState(() {
+            jenisKelaminController.text = value ?? "";
+          });
+        },
+      ),
+
+      const SizedBox(height: 30),
+
+      SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: register,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0077B6),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+          child: const Text(
+            "Daftar",
+            style: TextStyle(fontSize: 16, color: Colors.white),
+          ),
+        ),
+      ),
+
 
                   const SizedBox(height: 20),
 

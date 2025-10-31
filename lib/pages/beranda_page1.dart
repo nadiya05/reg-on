@@ -1,7 +1,20 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:reg_on/PengajuanKIA/beranda_pengajuan_kia.dart';
+import 'package:reg_on/PengajuanKK/beranda_pengajuan_kk.dart';
+import 'package:reg_on/pages/akun/index.dart';
+import 'package:reg_on/pages/pengajuanKTP/beranda_pengajuan_ktp.dart';
+import 'package:reg_on/berita/beranda_berita.dart';
+import 'package:reg_on/berita/detail_berita.dart';
+import 'package:reg_on/riwayat_pengajuan.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class BerandaPage1 extends StatefulWidget {
-  final Map<String, dynamic> user; // ⬅️ user dari API
+  final Map<String, dynamic> user;
 
   const BerandaPage1({super.key, required this.user});
 
@@ -12,119 +25,58 @@ class BerandaPage1 extends StatefulWidget {
 class _BerandaPage1State extends State<BerandaPage1> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  List<dynamic> _newsItems = [];
+  bool loading = true;
 
-  final List<Map<String, String>> _newsItems = [
-    {
-      "title": "Kecamatan Lohbener",
-      "date": "15 September 2025",
-      "image": "assets/images/bundaran mangga.jpeg"
-    },
-    {
-      "title": "Berita Kedua",
-      "date": "16 September 2025",
-      "image": "assets/images/bundaran mangga.jpeg"
-    },
-    {
-      "title": "Berita Ketiga",
-      "date": "17 September 2025",
-      "image": "assets/images/bundaran mangga.jpeg"
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    fetchRandomBerita();
+  }
+
+  Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  Future<void> fetchRandomBerita() async {
+    try {
+      final token = await getToken();
+      final res = await http.get(
+        Uri.parse('http://10.0.2.2:8000/api/berita'),
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final beritaList = (data['data'] ?? data['berita'] ?? []) as List;
+
+        beritaList.shuffle(Random());
+        final randomThree = beritaList.take(3).toList();
+
+        setState(() {
+          _newsItems = randomThree;
+          loading = false;
+        });
+      } else {
+        setState(() => loading = false);
+      }
+    } catch (e) {
+      print('Error ambil berita: $e');
+      setState(() => loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Custom Drawer (sidebar)
-      drawer: Drawer(
-        width: MediaQuery.of(context).size.width * 0.7,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            topRight: Radius.circular(40),
-            bottomRight: Radius.circular(40),
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Profil user
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    const CircleAvatar(
-                      radius: 40,
-                      backgroundImage: AssetImage("assets/images/profile.jpg"),
-                    ),
-                    const SizedBox(height: 12),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.user['name'] ?? 'Pengguna', // ⬅️ nama dari API
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      widget.user['nik'] ?? 'NIK tidak ada', // contoh tambahan
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                    const Text(
-                      "lihat akun",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Divider(),
-
-              // Menu
-              Expanded(
-                child: ListView(
-                  children: const [
-                    ListTile(
-                      leading: Icon(Icons.headset_mic),
-                      title: Text("Layanan Pengguna"),
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.history),
-                      title: Text("Riwayat Pengajuan"),
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.notifications),
-                      title: Text("Notifikasi"),
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.article),
-                      title: Text("Berita"),
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.phone),
-                      title: Text("Hubungi Admin"),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Divider(),
-
-              // Logout
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.grey),
-                title: const Text("Keluar"),
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/masuk'); 
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-
+      drawer: _buildDrawer(),
       body: Stack(
         children: [
-          // Background biru
+          // 🔹 Background biru atas
           Positioned(
             top: 0,
             left: 0,
@@ -132,7 +84,7 @@ class _BerandaPage1State extends State<BerandaPage1> {
             child: Container(
               height: 320,
               decoration: const BoxDecoration(
-                color: Color.fromRGBO(0, 119, 182, 1),
+                color: Color(0xFF0077B6),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(50),
                   bottomRight: Radius.circular(50),
@@ -141,74 +93,49 @@ class _BerandaPage1State extends State<BerandaPage1> {
             ),
           ),
 
-Positioned.fill(
-        top: 100, // kasih jarak biar tidak ketimpa header
-        child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+          // 🔹 Konten utama
+          Positioned.fill(
+            top: 120,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   const SizedBox(height: 15),
-
-                  // Carousel
                   _buildCarousel(),
-
                   const SizedBox(height: 24),
-
-                  // Sambutan
-                  const Text(
-                    "Selamat Datang Penduduk Lohbener!\nsilahkan pilih kebutuhan dokumen anda",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
+                  Text(
+                  "Selamat Datang, ${widget.user['name'] ?? 'Penduduk Lohbener'}!\nSilakan pilih kebutuhan dokumen anda",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
                   const SizedBox(height: 24),
-
-                  // Tombol menu
-                  Column(
-                    children: [
-                      _menuButton(context, "Pengajuan KTP", "pengajuan_ktp.png"),
-                      const SizedBox(height: 16),
-                      _menuButton(context, "Pengajuan KIA", "pengajuan_kia.png",
-                          imageRight: true),
-                      const SizedBox(height: 16),
-                      _menuButton(context, "Pengajuan KK", "pengajuan_kk.png"),
-                    ],
-                  ),
+                  _buildMenuButtons(context),
                 ],
               ),
             ),
           ),
-),
 
-          // Header menu + logo
+          // 🔹 Header logo dan tombol drawer
           Positioned(
-            top: 15,
+            top: -25,
             left: 0,
-            right: -60,
+            right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Tombol menu (buka drawer)
                 Builder(
-                  builder: (context) {
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: IconButton(
-                        icon: const Icon(Icons.menu,
-                            size: 40, color: Colors.white),
-                        onPressed: () {
-                          Scaffold.of(context).openDrawer();
-                        },
-                      ),
-                    );
-                  },
+                  builder: (context) => IconButton(
+                    icon: const Icon(Icons.menu, size: 40, color: Colors.white),
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
                 ),
-                // Logo kanan
-                Padding(
-                  padding: const EdgeInsets.only(right: 25),
+                // ⬇️ Logo dengan posisi rapi tanpa padding negatif
+                Transform.translate(
+                  offset: const Offset(23, 0), // geser dikit ke kanan dan naik tipis
                   child: Image.asset(
                     "assets/images/logo.png",
-                    height: 120,
+                    width: 190,
+                    height: 190,
                   ),
                 ),
               ],
@@ -219,24 +146,122 @@ Positioned.fill(
     );
   }
 
+  // 🔹 Drawer user
+  Widget _buildDrawer() {
+    return Drawer(
+      backgroundColor: Colors.white,
+      width: MediaQuery.of(context).size.width * 0.7,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: widget.user['foto'] != null
+                        ? NetworkImage("http://10.0.2.2:8000/storage/${widget.user['foto']}")
+                        : const AssetImage("assets/images/profile.jpg") as ImageProvider,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.user['name'] ?? 'Pengguna',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Text(widget.user['nik'] ?? 'NIK tidak ada',
+                      style: const TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) => IndexPage(user: widget.user)));
+                    },
+                    child: const Text(
+                      "Lihat Akun",
+                      style: TextStyle(fontWeight: FontWeight.w500, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView(
+                children: [
+                  const ListTile(leading: Icon(Icons.headset_mic), title: Text("Layanan Pengguna")),
+                  ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text("Riwayat Pengajuan"),
+                  onTap: () {
+                    Navigator.pop(context); // tutup drawer
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RiwayatPengajuanPage(),
+                      ),
+                    );
+                  },
+                ),
+                  const ListTile(leading: Icon(Icons.notifications), title: Text("Notifikasi")),
+                  ListTile(
+                    leading: const Icon(Icons.article),
+                    title: const Text("Berita"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                          context, MaterialPageRoute(builder: (context) => const BerandaBerita()));
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text("Keluar"),
+              onTap: () => Navigator.pushReplacementNamed(context, '/masuk'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔹 Carousel berita random
   Widget _buildCarousel() {
+    if (loading) {
+      return const SizedBox(
+        height: 250,
+        child: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    if (_newsItems.isEmpty) {
+      return const SizedBox(
+        height: 250,
+        child: Center(
+            child: Text("Belum ada berita",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500))),
+      );
+    }
+
     return Container(
       height: 250,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: const Border(
-          bottom: BorderSide(
-            color: Color.fromRGBO(0, 119, 182, 1),
-            width: 2,
-          ),
+          bottom: BorderSide(color: Color(0xFF0077B6), width: 2),
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6, offset: const Offset(0, 3))
         ],
       ),
       child: Stack(
@@ -244,37 +269,30 @@ Positioned.fill(
         children: [
           PageView.builder(
             controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-              });
-            },
             itemCount: _newsItems.length,
+            onPageChanged: (i) => setState(() => _currentPage = i),
             itemBuilder: (context, index) {
-              final item = _newsItems[index];
+              final berita = _newsItems[index];
+              final fotoUrl =
+                  berita['foto'] ?? "https://via.placeholder.com/400x200.png?text=No+Image";
               return _carouselItem(
-                item["title"]!,
-                item["date"]!,
-                item["image"]!,
-              );
+                  berita['judul'] ?? '-', berita['tanggal'] ?? '-', fotoUrl, berita['id']);
             },
           ),
           Positioned(
             bottom: 16,
-            left: 0,
-            right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
                 _newsItems.length,
-                (index) => Container(
+                (i) => Container(
                   margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: _currentPage == index ? 12 : 8,
-                  height: _currentPage == index ? 12 : 8,
+                  width: _currentPage == i ? 12 : 8,
+                  height: _currentPage == i ? 12 : 8,
                   decoration: BoxDecoration(
-                    color: _currentPage == index
-                        ? const Color.fromRGBO(0, 119, 182, 1)
-                        : Colors.grey,
+                    color: _currentPage == i
+                        ? const Color(0xFF0077B6)
+                        : Colors.grey.withOpacity(0.5),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -286,70 +304,59 @@ Positioned.fill(
     );
   }
 
-  Widget _carouselItem(String title, String date, String image) {
-    return Container(
-      margin: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        image: DecorationImage(
-          image: AssetImage(image),
-          fit: BoxFit.cover,
-        ),
-      ),
+  // 🔹 Item di carousel
+  Widget _carouselItem(String title, String date, String image, int id) {
+    return GestureDetector(
+      onTap: () =>
+          Navigator.push(context, MaterialPageRoute(builder: (_) => DetailBerita(id: id))),
       child: Container(
+        margin: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Colors.black.withOpacity(0.6),
-              Colors.transparent,
-            ],
-          ),
+          image: DecorationImage(image: NetworkImage(image), fit: BoxFit.cover),
         ),
-        child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+            ),
+          ),
           padding: const EdgeInsets.fromLTRB(12, 20, 12, 70),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    date,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
+              Flexible(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(date,
+                        style:
+                            const TextStyle(color: Colors.white70, fontSize: 14)),
+                  ],
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromRGBO(0, 119, 182, 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  backgroundColor: const Color(0xFF0077B6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
-                onPressed: () {},
-                child: const Text(
-                  "Baca",
-                  style: TextStyle(color: Colors.white),
-                ),
+                onPressed: () {
+                  Navigator.push(
+                      context, MaterialPageRoute(builder: (_) => DetailBerita(id: id)));
+                },
+                child: const Text("Baca", style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -358,71 +365,56 @@ Positioned.fill(
     );
   }
 
-  Widget _menuButton(BuildContext context, String text, String imageName,
-      {bool imageRight = false}) {
+  // 🔹 Tombol menu pengajuan
+  Widget _buildMenuButtons(BuildContext context) {
+    return Column(
+      children: [
+        _menuButton("Pengajuan KTP", "pengajuan_ktp.png",
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const BerandaPengajuanKTP()))),
+        const SizedBox(height: 16),
+        _menuButton("Pengajuan KIA", "pengajuan_kia.png",
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const BerandaPengajuanKIA()))),
+        const SizedBox(height: 16),
+        _menuButton("Pengajuan KK", "pengajuan_kk.png",
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const BerandaPengajuanKK()))),
+      ],
+    );
+  }
+
+  Widget _menuButton(String text, String imageName, {VoidCallback? onTap}) {
     return SizedBox(
       width: double.infinity,
       height: 150,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color.fromRGBO(0, 119, 182, 1),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          backgroundColor: const Color(0xFF0077B6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           elevation: 3,
           padding: EdgeInsets.zero,
         ),
-        onPressed: () {},
+        onPressed: onTap,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: imageRight
-              ? [
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        text,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Image.asset(
-                      "assets/images/$imageName",
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ]
-              : [
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Image.asset(
-                      "assets/images/$imageName",
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        text,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child:
+                  Image.asset("assets/images/$imageName", width: 90, height: 90, fit: BoxFit.contain),
+            ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

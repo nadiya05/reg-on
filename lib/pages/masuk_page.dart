@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'beranda_page1.dart';
 
 class MasukPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class MasukPage extends StatefulWidget {
 class _MasukPageState extends State<MasukPage> {
   final nikController = TextEditingController();
   final passwordController = TextEditingController();
+  bool isLoading = false;
 
   Future<void> login() async {
     if (nikController.text.isEmpty || passwordController.text.isEmpty) {
@@ -21,6 +23,8 @@ class _MasukPageState extends State<MasukPage> {
       );
       return;
     }
+
+    setState(() => isLoading = true);
 
     try {
       final response = await http.post(
@@ -35,19 +39,26 @@ class _MasukPageState extends State<MasukPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-      final user = data['user'];
+        final user = data['user'];
+        final token = data['token']; // pastikan backend kirim token
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Selamat datang ${user['name']}")),
-      );
+        // Simpan token di SharedPreferences
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
+        await prefs.setString('user_id', user['id'].toString());
+        await prefs.setString('user_name', user['name']);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => BerandaPage1(user: user), // ⬅️ kirim user
-        ),
-      );
-    }else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Selamat datang ${user['name']}")),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BerandaPage1(user: user), // kirim user
+          ),
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['message'] ?? "Login gagal")),
         );
@@ -56,6 +67,8 @@ class _MasukPageState extends State<MasukPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 
@@ -164,7 +177,7 @@ class _MasukPageState extends State<MasukPage> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: login, // ⬅️ sekarang manggil API login
+                  onPressed: isLoading ? null : login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0077B6),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -172,10 +185,14 @@ class _MasukPageState extends State<MasukPage> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  child: const Text(
-                    "Masuk",
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
+                  child: isLoading
+                      ? const CircularProgressIndicator(
+                          color: Colors.white,
+                        )
+                      : const Text(
+                          "Masuk",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                 ),
               ),
             ),
