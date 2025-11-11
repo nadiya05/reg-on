@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:reg_on/Layouts/BaseLayouts2.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 
 class FormRusakUbahStatus extends StatefulWidget {
   const FormRusakUbahStatus({super.key});
@@ -25,15 +26,20 @@ class _FormRusakUbahStatusState extends State<FormRusakUbahStatus> {
   File? kkFile;
   bool _isLoading = false;
 
+  // 🔹 Ambil dan simpan file ke direktori app (biar gak hilang)
   Future<void> pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      final directory = await getApplicationDocumentsDirectory();
+      final savedPath = path.join(directory.path, path.basename(pickedFile.path));
+      await File(pickedFile.path).copy(savedPath);
       setState(() {
-        kkFile = File(pickedFile.path);
+        kkFile = File(savedPath);
       });
     }
   }
 
+  // 🔹 Submit form ke Laravel API
   Future<void> submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     if (kkFile == null) {
@@ -42,12 +48,20 @@ class _FormRusakUbahStatusState extends State<FormRusakUbahStatus> {
       return;
     }
 
+    if (!await kkFile!.exists()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File tidak ditemukan, silakan upload ulang')),
+      );
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Token tidak ditemukan, silakan login ulang')));
+        const SnackBar(content: Text('Token tidak ditemukan, silakan login ulang')),
+      );
       return;
     }
 
@@ -77,10 +91,11 @@ class _FormRusakUbahStatusState extends State<FormRusakUbahStatus> {
         "Authorization": "Bearer $token",
       });
 
-      var response = await request.send();
-      var respStr = await response.stream.bytesToString();
+      final response = await request.send();
+      final respStr = await response.stream.bytesToString();
       final responseData = jsonDecode(respStr);
-      print('Response: $respStr');
+
+      print('🟢 Response dari server: $respStr');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final int pengajuanId = responseData['data']['id'];

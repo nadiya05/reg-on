@@ -129,7 +129,7 @@ class _FormKIAState extends State<FormKIA> {
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Berhasil mengajukan KIA')),
+          const SnackBar(content: Text('Berhasil submit')),
         );
 
         Navigator.pushNamed(

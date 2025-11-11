@@ -22,13 +22,11 @@ class _StatusKkPageState extends State<StatusKkPage> with RouteAware {
     fetchStatusData();
   }
 
-  /// 🔹 Ambil token dari SharedPreferences
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
 
-  /// 🔹 Ambil user_id dari SharedPreferences
   Future<int?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     final dynamic userId = prefs.get('user_id');
@@ -37,7 +35,6 @@ class _StatusKkPageState extends State<StatusKkPage> with RouteAware {
     return null;
   }
 
-  /// 🔹 Fetch data status pengajuan KK dari Laravel API
   Future<void> fetchStatusData() async {
     final token = await getToken();
     final userId = await getUserId();
@@ -48,8 +45,8 @@ class _StatusKkPageState extends State<StatusKkPage> with RouteAware {
       return;
     }
 
-    // Tambahkan query timestamp agar tidak cache
-    final url = Uri.parse('http://10.0.2.2:8000/api/status_pengajuan_kk?t=${DateTime.now().millisecondsSinceEpoch}');
+    final url = Uri.parse(
+        'http://10.0.2.2:8000/api/status_pengajuan_kk?t=${DateTime.now().millisecondsSinceEpoch}');
 
     try {
       final response = await http.get(
@@ -78,7 +75,6 @@ class _StatusKkPageState extends State<StatusKkPage> with RouteAware {
     }
   }
 
-  /// 🔹 Warna status
   Color getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'selesai':
@@ -90,7 +86,6 @@ class _StatusKkPageState extends State<StatusKkPage> with RouteAware {
     }
   }
 
-  /// 🔹 Label status
   String getStatusLabel(String status) {
     switch (status.toLowerCase()) {
       case 'selesai':
@@ -129,6 +124,7 @@ class _StatusKkPageState extends State<StatusKkPage> with RouteAware {
                     final status = item['status'] ?? 'sedang diproses';
                     final statusColor = getStatusColor(status);
                     final statusLabel = getStatusLabel(status);
+                    final String? keterangan = item['keterangan'];
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 20),
@@ -166,28 +162,79 @@ class _StatusKkPageState extends State<StatusKkPage> with RouteAware {
                                 Text("Pengajuan ${item['jenis_kk'] ?? '-'}",
                                     overflow: TextOverflow.ellipsis),
                                 const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: statusColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    statusLabel,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
+
+                                // 🔹 Klik status untuk lihat keterangan
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () async {
+                                    if (status.toLowerCase() == 'ditolak') {
+                                      await showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return AlertDialog(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            title: const Text(
+                                              'Pengajuan Ditolak',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            content: Text(
+                                              keterangan?.isNotEmpty == true
+                                                  ? keterangan!
+                                                  : 'Pengajuan Anda ditolak oleh admin tanpa keterangan.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                                child: const Text('Tutup'),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: statusColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      statusLabel,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
+
+                                // 🔹 Tambahan: tampilkan keterangan di bawah status
+                                if (status.toLowerCase() == 'ditolak' &&
+                                    keterangan != null &&
+                                    keterangan.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Keterangan: $keterangan",
+                                    style: const TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 13,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
-
                           const SizedBox(width: 10),
 
-                          // 🔹 Kanan: tombol resume
+                          // 🔹 Tombol resume
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF0077B6),
@@ -198,14 +245,46 @@ class _StatusKkPageState extends State<StatusKkPage> with RouteAware {
                             ),
                             onPressed: () async {
                               final int id = item['id'];
-                              final String jenis = item['jenis_kk'] ?? 'KK';
+                              final String status = item['status'] ?? '';
+                              final String? keterangan = item['keterangan'];
+
                               await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      ResumeKkPage(id: id),
+                                  builder: (context) => ResumeKkPage(id: id),
                                 ),
                               );
+
+                              if (status.toLowerCase() == 'ditolak') {
+                                await showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      title: const Text(
+                                        'Pengajuan Ditolak',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      content: Text(
+                                        keterangan?.isNotEmpty == true
+                                            ? keterangan!
+                                            : 'Pengajuan Anda ditolak oleh admin tanpa keterangan.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('Tutup'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              }
+
                               await fetchStatusData();
                             },
                             child: const Text('Resume'),

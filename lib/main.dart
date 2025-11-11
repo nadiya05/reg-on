@@ -56,6 +56,9 @@ import 'berita/detail_berita.dart';
 // riwayat pengajuan
 import 'riwayat_pengajuan.dart';
 
+//notifikasi
+import 'notifikasi/notifikasi_page.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -94,6 +97,7 @@ class MyApp extends StatelessWidget {
         '/pengajuan-kk/ubah-status': (context) => const FormUbahStatusKK(),
         '/status_pengajuan_kk': (context) => const StatusKkPage(),
         '/status_pengajuan_all': (context) => const RiwayatPengajuanPage(),
+        '/notifikasi': (context) => const NotifikasiPage(),
 
         // 🔹 Tambahan route berita
         '/berita': (context) => const BerandaBerita(),

@@ -48,10 +48,8 @@ class _RiwayatPengajuanPageState extends State<RiwayatPengajuanPage> {
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final data = body['data'] ?? [];
-
         setState(() {
-          _riwayat = data;
+          _riwayat = body['data'] ?? [];
           _isLoading = false;
         });
       } else {
@@ -69,29 +67,21 @@ class _RiwayatPengajuanPageState extends State<RiwayatPengajuanPage> {
   }
 
   Widget _buildItem(dynamic item) {
-    final tanggal = item['tanggal_pengajuan'] ?? '-';
+    final nik = item['nik'] ?? '-';
+    final nama = item['nama'] ?? '-';
     final status = item['status'] ?? 'Sedang diproses';
-    final jenis = (item['jenis_pengajuan'] ?? '').toUpperCase(); // contoh: KTP / KK / KIA
-    final detailJenis = item['jenis_detail'] ?? '-'; // contoh: Pemula, Penggantian, Baru
+    final jenisDokumen = item['jenis_dokumen'] ?? '-';
+    final jenisPengajuan = item['jenis_pengajuan'] ?? '-';
+    final tanggal = item['tanggal_pengajuan'] ?? '-';
+    final id = item['id'];
 
-    // Tentukan halaman resume berdasar jenis dokumen
     void _openResume() {
-      final id = item['id'];
-      if (jenis == "KTP") {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ResumeKtpPage(id: id)),
-        );
-      } else if (jenis == "KK") {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ResumeKkPage(id: id)),
-        );
-      } else if (jenis == "KIA") {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ResumeKiaPage(id: id)),
-        );
+      if (jenisDokumen == "KTP") {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ResumeKtpPage(id: id)));
+      } else if (jenisDokumen == "KK") {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ResumeKkPage(id: id)));
+      } else if (jenisDokumen == "KIA") {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ResumeKiaPage(id: id)));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Resume tidak tersedia untuk jenis ini")),
@@ -116,15 +106,12 @@ class _RiwayatPengajuanPageState extends State<RiwayatPengajuanPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "[$tanggal] Pengajuan $jenis - $detailJenis",
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "Status: $status",
-            style: const TextStyle(color: Colors.grey),
-          ),
+          Text("NIK: $nik", style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text("Nama: $nama"),
+          Text("Jenis Dokumen: $jenisDokumen"),
+          Text("Jenis Pengajuan: $jenisPengajuan"),
+          Text("Status: $status"),
+          Text("Tanggal Pengajuan: $tanggal"),
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,

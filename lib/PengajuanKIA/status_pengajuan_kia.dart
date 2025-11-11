@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:reg_on/Layouts/BaseLayouts1.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:reg_on/Layouts/BaseLayouts1.dart';
 import 'package:reg_on/PengajuanKIA/resume_kia.dart';
-
 
 class StatusPengajuanKiaPage extends StatefulWidget {
   const StatusPengajuanKiaPage({super.key});
@@ -37,7 +36,7 @@ class _StatusPengajuanKiaPageState extends State<StatusPengajuanKiaPage>
     return null;
   }
 
-  /// 🔹 Fetch data satu persatu atau semua, tapi jangan replace list langsung
+  /// 🔹 Ambil data status pengajuan KIA dari API
   Future<void> fetchStatusData() async {
     final token = await getToken();
     final userId = await getUserId();
@@ -49,8 +48,7 @@ class _StatusPengajuanKiaPageState extends State<StatusPengajuanKiaPage>
     }
 
     final url = Uri.parse(
-      'http://10.0.2.2:8000/api/status_pengajuan_kia?t=${DateTime.now().millisecondsSinceEpoch}'
-    );
+        'http://10.0.2.2:8000/api/status_pengajuan_kia?t=${DateTime.now().millisecondsSinceEpoch}');
 
     try {
       final response = await http.get(
@@ -64,20 +62,10 @@ class _StatusPengajuanKiaPageState extends State<StatusPengajuanKiaPage>
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data is List) {
-          setState(() {
-            // update list item by item agar Flutter tidak rebuild semua
-            for (var newItem in data) {
-              final index = statusList.indexWhere((e) => e['id'] == newItem['id']);
-              if (index != -1) {
-                statusList[index] = newItem; // update item lama
-              } else {
-                statusList.add(newItem); // tambahkan item baru
-              }
-            }
-            isLoading = false;
-          });
-        }
+        setState(() {
+          statusList = data is List ? data : (data['data'] ?? []);
+          isLoading = false;
+        });
       } else {
         debugPrint('❌ Gagal memuat data: ${response.body}');
         setState(() => isLoading = false);
@@ -128,6 +116,7 @@ class _StatusPengajuanKiaPageState extends State<StatusPengajuanKiaPage>
                     final status = item['status'] ?? 'sedang diproses';
                     final statusColor = getStatusColor(status);
                     final statusLabel = getStatusLabel(status);
+                    final String? keterangan = item['keterangan'];
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 20),
@@ -146,6 +135,7 @@ class _StatusPengajuanKiaPageState extends State<StatusPengajuanKiaPage>
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // 🔹 Kiri: info pengajuan
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,25 +154,79 @@ class _StatusPengajuanKiaPageState extends State<StatusPengajuanKiaPage>
                                 Text("Pengajuan ${item['jenis_kia'] ?? '-'}",
                                     overflow: TextOverflow.ellipsis),
                                 const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: statusColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    statusLabel,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
+
+                                // 🔹 Status bisa diklik kalau ditolak
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () async {
+                                    if (status.toLowerCase() == 'ditolak') {
+                                      await showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return AlertDialog(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            title: const Text(
+                                              'Pengajuan Ditolak',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            content: Text(
+                                              keterangan?.isNotEmpty == true
+                                                  ? keterangan!
+                                                  : 'Pengajuan Anda ditolak oleh admin tanpa keterangan.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                                child: const Text('Tutup'),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: statusColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      statusLabel,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
+
+                                // 🔹 Tambahan: tampilkan keterangan penolakan di bawah status
+                                if (status.toLowerCase() == 'ditolak' &&
+                                    keterangan != null &&
+                                    keterangan.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Keterangan: $keterangan",
+                                    style: const TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 13,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
                           const SizedBox(width: 10),
+
+                          // 🔹 Kanan: tombol resume
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF0077B6),
@@ -193,19 +237,50 @@ class _StatusPengajuanKiaPageState extends State<StatusPengajuanKiaPage>
                             ),
                             onPressed: () async {
                               final int id = item['id'];
-                              final updatedItem = await Navigator.push(
+                              final String status = item['status'] ?? '';
+                              final String? keterangan = item['keterangan'];
+
+                              // Buka halaman resume
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ResumeKiaPage(id: id),
                                 ),
                               );
-                              // jika ResumeKiaPage mengembalikan data baru, update satu item saja
-                              if (updatedItem != null) {
-                                setState(() {
-                                  final index = statusList.indexWhere((e) => e['id'] == updatedItem['id']);
-                                  if (index != -1) statusList[index] = updatedItem;
-                                });
+
+                              // Kalau status ditolak, tampilkan dialog keterangannya
+                              if (status.toLowerCase() == 'ditolak') {
+                                await showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      title: const Text(
+                                        'Pengajuan Ditolak',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      content: Text(
+                                        keterangan?.isNotEmpty == true
+                                            ? keterangan!
+                                            : 'Pengajuan Anda ditolak oleh admin tanpa keterangan.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('Tutup'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
                               }
+
+                              // Refresh data setelah balik
+                              await fetchStatusData();
                             },
                             child: const Text('Resume'),
                           ),

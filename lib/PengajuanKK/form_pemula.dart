@@ -115,7 +115,7 @@ class _FormPemulaKKState extends State<FormPemulaKK> {
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil submit pengajuan KK')),
+          const SnackBar(content: Text('Berhasil submit')),
         );
 
         Navigator.push(

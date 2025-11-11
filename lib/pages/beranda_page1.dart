@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:reg_on/notifikasi/notifikasi_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reg_on/PengajuanKIA/beranda_pengajuan_kia.dart';
 import 'package:reg_on/PengajuanKK/beranda_pengajuan_kk.dart';
@@ -209,7 +210,15 @@ class _BerandaPage1State extends State<BerandaPage1> {
                     );
                   },
                 ),
-                  const ListTile(leading: Icon(Icons.notifications), title: Text("Notifikasi")),
+                  ListTile(
+                    leading: const Icon(Icons.notifications),
+                    title: const Text("Notifikasi"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                          context, MaterialPageRoute(builder: (context) => const NotifikasiPage()));
+                    },
+                  ),
                   ListTile(
                     leading: const Icon(Icons.article),
                     title: const Text("Berita"),
@@ -234,7 +243,6 @@ class _BerandaPage1State extends State<BerandaPage1> {
     );
   }
 
-  // 🔹 Carousel berita random
   Widget _buildCarousel() {
     if (loading) {
       return const SizedBox(

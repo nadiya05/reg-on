@@ -127,7 +127,7 @@ class _FormUbahStatusKKState extends State<FormUbahStatusKK> {
         final int? pengajuanId = responseData['data']?['id'];
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil submit pengajuan KK Ubah Status')),
+          const SnackBar(content: Text('Berhasil submit')),
         );
 
         Navigator.push(
