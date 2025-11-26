@@ -272,6 +272,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.1+1"
+  js:
+    dependency: transitive
+    description:
+      name: js
+      sha256: c1b2e9b5ea78c45e1a0788d29606ba27dc5f71f019f32ca5140f61ef071838cf
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.1"
   leak_tracker:
     dependency: transitive
     description:
@@ -456,6 +464,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.14.2"
+  pusher_channels_flutter:
+    dependency: "direct main"
+    description:
+      name: pusher_channels_flutter
+      sha256: "4d83b2012079c7d1a3c42cee1d37a48c974504d869b6a9c085144b2d4e35e58a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.5.0"
+  pusher_client:
+    dependency: "direct main"
+    description:
+      name: pusher_client
+      sha256: "0dce30a1b4b0dca2a9af2f680eec495b9cdc2b0281491426f3af9718776dc14a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
   qr:
     dependency: transitive
     description:
@@ -645,6 +669,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.4"
+  uuid:
+    dependency: "direct main"
+    description:
+      name: uuid
+      sha256: "648e103079f7c64a36dc7d39369cabb358d377078a051d6ae2ad3aa539519313"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.7"
   vector_math:
     dependency: transitive
     description:

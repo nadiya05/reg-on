@@ -59,6 +59,10 @@ import 'riwayat_pengajuan.dart';
 //notifikasi
 import 'notifikasi/notifikasi_page.dart';
 
+//chat
+import 'chat/landing_page.dart';
+import 'pages/ChatPage.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -98,7 +102,17 @@ class MyApp extends StatelessWidget {
         '/status_pengajuan_kk': (context) => const StatusKkPage(),
         '/status_pengajuan_all': (context) => const RiwayatPengajuanPage(),
         '/notifikasi': (context) => const NotifikasiPage(),
+        '/landing_page': (context) => const LandingPageChat(),
+        '/chatRoom': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
 
+        return ChatPage(
+          userId: args['userId'],
+          token: args['token'],
+          userAvatarUrl: args['userAvatarUrl'],
+          adminAvatarUrl: args['adminAvatarUrl'],
+        );
+      },
         // 🔹 Tambahan route berita
         '/berita': (context) => const BerandaBerita(),
       },

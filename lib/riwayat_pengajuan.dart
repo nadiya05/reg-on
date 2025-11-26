@@ -17,6 +17,8 @@ class RiwayatPengajuanPage extends StatefulWidget {
 class _RiwayatPengajuanPageState extends State<RiwayatPengajuanPage> {
   bool _isLoading = true;
   List<dynamic> _riwayat = [];
+  List<dynamic> _filteredRiwayat = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -24,7 +26,7 @@ class _RiwayatPengajuanPageState extends State<RiwayatPengajuanPage> {
     fetchRiwayat();
   }
 
-  Future<void> fetchRiwayat() async {
+  Future<void> fetchRiwayat({String? query}) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
 
@@ -40,11 +42,17 @@ class _RiwayatPengajuanPageState extends State<RiwayatPengajuanPage> {
       'Authorization': 'Bearer $token',
     };
 
+    // kalau ada query, tambahkan ke URL
+    final url = query == null || query.isEmpty
+        ? 'http://10.0.2.2:8000/api/status_pengajuan_all'
+        : 'http://10.0.2.2:8000/api/status_pengajuan_all?search=$query';
+
     try {
-      final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/status_pengajuan_all'),
-        headers: headers,
-      );
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      // 🔍 Debug print
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -64,6 +72,23 @@ class _RiwayatPengajuanPageState extends State<RiwayatPengajuanPage> {
           .showSnackBar(SnackBar(content: Text("Gagal memuat data: $e")));
       setState(() => _isLoading = false);
     }
+  }
+
+  void _searchRiwayat(String query) {
+    final filtered = _riwayat.where((item) {
+      final nik = (item['nik'] ?? '').toString().toLowerCase();
+      final nama = (item['nama'] ?? '').toString().toLowerCase();
+      final jenisDokumen = (item['jenis_dokumen'] ?? '').toString().toLowerCase();
+      final jenisPengajuan = (item['jenis_pengajuan'] ?? '').toString().toLowerCase();
+      final q = query.toLowerCase();
+
+      return nik.contains(q) ||
+          nama.contains(q) ||
+          jenisDokumen.contains(q) ||
+          jenisPengajuan.contains(q);
+    }).toList();
+
+    setState(() => _filteredRiwayat = filtered);
   }
 
   Widget _buildItem(dynamic item) {
@@ -140,16 +165,39 @@ class _RiwayatPengajuanPageState extends State<RiwayatPengajuanPage> {
     return BaseLayouts2(
       title: "Riwayat Pengajuan",
       showBack: true,
-      child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _riwayat.isEmpty
-              ? const Center(child: Text("Belum ada pengajuan"))
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _riwayat.length,
-                  itemBuilder: (context, index) => _buildItem(_riwayat[index]),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: "Cari berdasarkan NIK, Nama, atau Jenis Dokumen...",
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                onChanged: (value) {
+                  fetchRiwayat(query: value);
+                },
+              ),
+            ),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _riwayat.isEmpty
+                    ? const Center(child: Text("Belum ada pengajuan"))
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _riwayat.length,
+                        itemBuilder: (context, index) =>
+                            _buildItem(_riwayat[index]),
+                      ),
+          ],
+        ),
+      ),
     );
   }
 }

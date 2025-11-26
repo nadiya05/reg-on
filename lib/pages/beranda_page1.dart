@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:reg_on/chat/landing_page.dart';
 import 'package:reg_on/notifikasi/notifikasi_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reg_on/PengajuanKIA/beranda_pengajuan_kia.dart';
@@ -196,7 +197,19 @@ class _BerandaPage1State extends State<BerandaPage1> {
             Expanded(
               child: ListView(
                 children: [
-                  const ListTile(leading: Icon(Icons.headset_mic), title: Text("Layanan Pengguna")),
+                   ListTile(
+                  leading: const Icon(Icons.headset_mic),
+                  title: const Text("Layanan Pengguna"),
+                  onTap: () {
+                    Navigator.pop(context); // tutup drawer
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LandingPageChat(),
+                      ),
+                    );
+                  },
+                ),
                   ListTile(
                   leading: const Icon(Icons.history),
                   title: const Text("Riwayat Pengajuan"),

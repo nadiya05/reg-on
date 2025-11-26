@@ -40,6 +40,9 @@ dependencies:
   pdf: ^3.10.8
   printing: ^5.11.1
   url_launcher: ^6.3.0
+  pusher_client: ^2.0.0
+  uuid: ^3.0.7
+  pusher_channels_flutter: ^2.1.0
   
 dev_dependencies:
   flutter_test:
@@ -70,6 +73,7 @@ flutter:
     - assets/images/pengajuan_kia.png
     - assets/images/pengajuan_kk.png
     - assets/images/beranda_KTP.png
+    - assets/images/minloh.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

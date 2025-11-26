@@ -15,6 +15,7 @@ class StatusKtpPage extends StatefulWidget {
 class _StatusKtpPageState extends State<StatusKtpPage> with RouteAware {
   List<dynamic> statusList = [];
   bool isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -35,7 +36,8 @@ class _StatusKtpPageState extends State<StatusKtpPage> with RouteAware {
     return null;
   }
 
-  Future<void> fetchStatusData() async {
+  /// 🔍 Fungsi fetch dengan optional parameter search
+  Future<void> fetchStatusData({String? searchQuery}) async {
     final token = await getToken();
     final userId = await getUserId();
 
@@ -45,8 +47,14 @@ class _StatusKtpPageState extends State<StatusKtpPage> with RouteAware {
       return;
     }
 
+    // ✅ PERBAIKAN: gunakan ? untuk query pertama, bukan &
+    final baseUrl = 'http://10.0.2.2:8000/api/status_pengajuan_ktp';
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
     final url = Uri.parse(
-        'http://10.0.2.2:8000/api/status_pengajuan_ktp?t=${DateTime.now().millisecondsSinceEpoch}');
+      searchQuery != null && searchQuery.isNotEmpty
+          ? '$baseUrl?search=$searchQuery&t=$timestamp'
+          : '$baseUrl?t=$timestamp',
+    );
 
     try {
       final response = await http.get(
@@ -60,7 +68,6 @@ class _StatusKtpPageState extends State<StatusKtpPage> with RouteAware {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         setState(() {
           statusList = data is List ? data : (data['data'] ?? []);
           isLoading = false;
@@ -110,191 +117,191 @@ class _StatusKtpPageState extends State<StatusKtpPage> with RouteAware {
   Widget build(BuildContext context) {
     return BaseLayouts1(
       title: 'Status',
-      child: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.white))
-          : statusList.isEmpty
-              ? const Center(
-                  child: Text(
-                    "Belum ada pengajuan.",
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                )
-              : Column(
-                  children: statusList.map((item) {
-                    final status = item['status'] ?? 'sedang diproses';
-                    final statusColor = getStatusColor(status);
-                    final statusLabel = getStatusLabel(status);
-                    final String? keterangan = item['keterangan'];
+      child: SingleChildScrollView(
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // 🔍 Kolom pencarian
+      Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: "Cari NIK, nama, atau status...",
+            prefixIcon: const Icon(Icons.search),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onChanged: (value) async {
+            await fetchStatusData(searchQuery: value);
+          },
+        ),
+      ),
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(25),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          )
-                        ],
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 🔹 Kiri: info pengajuan
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item['nik'] ?? '-',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 5),
-                                Text(item['nama'] ?? '-',
-                                    overflow: TextOverflow.ellipsis),
-                                Text("Pengajuan ${item['jenis_ktp'] ?? '-'}",
-                                    overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 10),
+      // 🔹 Konten utama
+      if (isLoading)
+        const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        )
+      else if (statusList.isEmpty)
+        const Center(
+          child: Text(
+            "Belum ada pengajuan.",
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+        )
+      else
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          itemCount: statusList.length,
+          itemBuilder: (context, index) {
+            final item = statusList[index];
+            final status = item['status'] ?? 'sedang diproses';
+            final statusColor = getStatusColor(status);
+            final statusLabel = getStatusLabel(status);
+            final String? keterangan = item['keterangan'];
 
-                                // 🔹 Status teks bisa diklik kalau Ditolak
-                                InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap: () async {
-                                    if (status.toLowerCase() == 'ditolak') {
-                                      await showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                            ),
-                                            title: const Text(
-                                              'Pengajuan Ditolak',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold),
-                                            ),
-                                            content: Text(
-                                              keterangan?.isNotEmpty == true
-                                                  ? keterangan!
-                                                  : 'Pengajuan Anda ditolak oleh admin tanpa keterangan.',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(context),
-                                                child: const Text('Tutup'),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    }
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: statusColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      statusLabel,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // 🔹 Tambahan: tampilkan keterangan penolakan di bawah status
-                                if (status.toLowerCase() == 'ditolak' &&
-                                    keterangan != null &&
-                                    keterangan.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    "Keterangan: $keterangan",
-                                    style: const TextStyle(
-                                      color: Colors.redAccent,
-                                      fontSize: 13,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  )
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 🔹 Info pengajuan
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['nik'] ?? '-',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
-                          const SizedBox(width: 10),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 5),
+                        Text(item['nama'] ?? '-', overflow: TextOverflow.ellipsis),
+                        Text(
+                          "Pengajuan ${item['jenis_ktp'] ?? '-'}",
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 10),
 
-                          // 🔹 Kanan: tombol resume
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0077B6),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        // 🔹 Status (klik kalau Ditolak)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () async {
+                            if (status.toLowerCase() == 'ditolak') {
+                              await showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    title: const Text(
+                                      'Pengajuan Ditolak',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    content: Text(
+                                      keterangan?.isNotEmpty == true
+                                          ? keterangan!
+                                          : 'Pengajuan Anda ditolak oleh admin tanpa keterangan.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context),
+                                        child: const Text('Tutup'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              statusLabel,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            onPressed: () async {
-                              final int id = item['id'];
-                              final String status = item['status'] ?? '';
-                              final String? keterangan = item['keterangan'];
+                          ),
+                        ),
 
-                              // 🔹 Tampilkan resume dulu
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ResumeKtpPage(id: id),
-                                ),
-                              );
-
-                              // 🔹 Kalau statusnya ditolak, tampilkan juga dialog keterangannya
-                              if (status.toLowerCase() == 'ditolak') {
-                                await showDialog(
-                                  context: context,
-                                  builder: (context) {
-                                    return AlertDialog(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      title: const Text(
-                                        'Pengajuan Ditolak',
-                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      content: Text(
-                                        keterangan?.isNotEmpty == true
-                                            ? keterangan!
-                                            : 'Pengajuan Anda ditolak oleh admin tanpa keterangan.',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context),
-                                          child: const Text('Tutup'),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              }
-
-                              // 🔹 Refresh data setelah balik
-                              await fetchStatusData();
-                            },
-                            child: const Text('Resume'),
+                        if (status.toLowerCase() == 'ditolak' &&
+                            keterangan != null &&
+                            keterangan.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            "Keterangan: $keterangan",
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 13,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // 🔹 Tombol Resume
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0077B6),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  }).toList(),
-                ),
+                    ),
+                    onPressed: () async {
+                      final int id = item['id'];
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ResumeKtpPage(id: id),
+                        ),
+                      );
+                      await fetchStatusData();
+                    },
+                    child: const Text('Resume'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+    ],
+  ),
+),
     );
   }
 }

@@ -12,47 +12,61 @@ class NotifikasiPage extends StatefulWidget {
 }
 
 class _NotifikasiPageState extends State<NotifikasiPage> {
+  bool _isLoading = true;
   List<dynamic> _notifikasi = [];
-  bool _loading = true;
+  final TextEditingController _searchController = TextEditingController();
   String? _token;
 
-  Future<void> getNotifikasi() async {
+  @override
+  void initState() {
+    super.initState();
+    fetchNotifikasi();
+  }
+
+  Future<void> fetchNotifikasi({String? query}) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
     setState(() => _token = token);
 
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Token tidak ditemukan")),
+        const SnackBar(content: Text("Silakan login terlebih dahulu")),
       );
       return;
     }
 
-    try {
-      final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/notifikasi'),
-        headers: {
-          "Accept": "application/json",
-          "Authorization": "Bearer $token",
-        },
-      );
+    final headers = {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
 
-      final data = jsonDecode(response.body);
-      if (data['success'] == true) {
+    // 🔍 URL dinamis kalau pakai search
+    final url = query == null || query.isEmpty
+        ? 'http://10.0.2.2:8000/api/notifikasi'
+        : 'http://10.0.2.2:8000/api/notifikasi?search=$query';
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers);
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
         setState(() {
-          _notifikasi = data['data'];
-          _loading = false;
+          _notifikasi = body['data'] ?? [];
+          _isLoading = false;
         });
       } else {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? 'Gagal memuat notifikasi')),
+          SnackBar(content: Text('Gagal memuat notifikasi (${response.statusCode})')),
         );
       }
     } catch (e) {
       print("❌ Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal mengambil notifikasi: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Gagal memuat data: $e")));
+      setState(() => _isLoading = false);
     }
   }
 
@@ -66,7 +80,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
           "Authorization": "Bearer $_token",
         },
       );
-      getNotifikasi(); // refresh
+      fetchNotifikasi();
     } catch (e) {
       print("❌ Gagal tandai dibaca: $e");
     }
@@ -82,16 +96,14 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
           "Authorization": "Bearer $_token",
         },
       );
-      getNotifikasi();
+      fetchNotifikasi();
     } catch (e) {
       print("❌ Gagal hapus notifikasi: $e");
     }
   }
 
-  // 🌟 popup detail notifikasi
   void showDetailDialog(Map<String, dynamic> n) async {
-    await tandaiDibaca(n['id']); // ubah status ke "dibaca" dulu
-
+    await tandaiDibaca(n['id']);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -129,142 +141,133 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    getNotifikasi();
+  Widget _buildItem(dynamic n) {
+    final tanggal = n['tanggal'] ?? '-';
+    final jenis = n['tipe_pengajuan'] ?? '-';
+    final status = n['status'] ?? 'belum dibaca';
+    final nama = n['nama_pengajuan'] ?? '-';
+
+    Color badgeColor;
+    switch (jenis.toLowerCase()) {
+      case 'ktp':
+        badgeColor = Colors.blue;
+        break;
+      case 'kk':
+        badgeColor = Colors.green;
+        break;
+      case 'kia':
+        badgeColor = Colors.orange;
+        break;
+      default:
+        badgeColor = Colors.grey;
+    }
+
+    return GestureDetector(
+      onTap: () => showDetailDialog(n),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: status == 'dibaca' ? Colors.grey.shade100 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    n['judul'] ?? '',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: status == 'dibaca' ? Colors.grey : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      jenis.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text("Nama Pengaju: $nama"),
+                  const SizedBox(height: 6),
+                  Text(n['pesan'] ?? ''),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Tanggal: $tanggal",
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () => hapusNotifikasi(n['id']),
+              icon: const Icon(Icons.delete, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return BaseLayouts2(
-      title: 'Notifikasi',
+      title: "Notifikasi",
       showBack: true,
-      child: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _notifikasi.isEmpty
-                ? const Center(child: Text("Belum ada notifikasi"))
-                : SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: _notifikasi.map((n) {
-                          final tanggal = n['tanggal']?.toString() ??
-                              n['created_at']?.toString().substring(0, 10) ??
-                              '-';
-                          final jenis = n['tipe_pengajuan'] ?? '-';
-                          final nama = n['nama_pengajuan'] ?? '-';
-                          final status = n['status'] ?? 'belum dibaca';
-
-                          Color badgeColor;
-                          switch (jenis.toLowerCase()) {
-                            case 'ktp':
-                              badgeColor = Colors.blue;
-                              break;
-                            case 'kk':
-                              badgeColor = Colors.green;
-                              break;
-                            case 'kia':
-                              badgeColor = Colors.orange;
-                              break;
-                            default:
-                              badgeColor = Colors.grey;
-                          }
-
-                          return GestureDetector(
-                            onTap: () => showDetailDialog(n), // 👈 popup muncul di sini
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: status == 'dibaca'
-                                    ? Colors.grey.shade100
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          n['judul'] ?? '',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: status == 'dibaca'
-                                                ? Colors.grey
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: badgeColor.withOpacity(0.15),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            jenis.toUpperCase(),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: badgeColor,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          "Nama Pengaju: $nama",
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          n['pesan'] ?? '',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          "Tanggal: $tanggal",
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: () => hapusNotifikasi(n['id']),
-                                    icon: const Icon(Icons.delete, color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText:
+                      "Cari berdasarkan judul, pesan, atau tipe dokumen...",
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                ),
+                onChanged: (value) => fetchNotifikasi(query: value),
+              ),
+            ),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _notifikasi.isEmpty
+                    ? const Center(child: Text("Belum ada notifikasi"))
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _notifikasi.length,
+                        itemBuilder: (context, index) =>
+                            _buildItem(_notifikasi[index]),
+                      ),
+          ],
+        ),
       ),
     );
   }
