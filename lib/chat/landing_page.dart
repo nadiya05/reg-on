@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,21 @@ class LandingPageChat extends StatelessWidget {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
+  Future<Map<String, dynamic>?> fetchChatProfiles(String token) async {
+    final response = await http.get(
+      Uri.parse("http://10.0.2.2:8000/api/chat/profile"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +34,7 @@ class LandingPageChat extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // 🔵 Lingkaran dekorasi kiri atas
+            // UI Dekorasi
             Positioned(
               top: -100,
               left: -60,
@@ -32,7 +48,6 @@ class LandingPageChat extends StatelessWidget {
               ),
             ),
 
-            // 🔵 Lingkaran dekorasi kanan atas
             Positioned(
               top: 20,
               right: -100,
@@ -46,11 +61,10 @@ class LandingPageChat extends StatelessWidget {
               ),
             ),
 
-            // 🔹 Konten utama
             Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                // Header + logo
+                // Header
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(
@@ -60,17 +74,14 @@ class LandingPageChat extends StatelessWidget {
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
                         onPressed: () => Navigator.pop(context),
                       ),
-                      Image.asset(
-                        "assets/images/logo.png",
-                        height: 100,
-                      ),
+                      Image.asset("assets/images/logo.png", height: 100),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 10),
 
-                // Gambar bot
+                // Maskot
                 Flexible(
                   flex: 4,
                   child: Image.asset(
@@ -82,7 +93,7 @@ class LandingPageChat extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                // Kartu bawah
+                // Kartu Bawah
                 Expanded(
                   flex: 5,
                   child: Container(
@@ -99,6 +110,7 @@ class LandingPageChat extends StatelessWidget {
                         ),
                       ],
                     ),
+
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -122,19 +134,17 @@ class LandingPageChat extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // 🔹 Tombol chat
-                        SizedBox(
-                          width: 200,
-                          height: 50,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0077B6),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              elevation: 3,
+                        // BUTTON CHAT
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0077B6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
                             ),
-                            onPressed: () async {
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                            elevation: 3,
+                          ),
+                          onPressed: () async {
                               final token = await getToken();
 
                               if (token == null) {
@@ -146,34 +156,53 @@ class LandingPageChat extends StatelessWidget {
                                 return;
                               }
 
-                              // Panggil chat start
-                              await http.post(
-                                Uri.parse("http://10.0.2.2:8000/api/chat/start"),
-                                headers: {
-                                  'Authorization': "Bearer $token",
-                                  'Accept': 'application/json',
-                                },
-                              );
+                              final data = await fetchChatProfiles(token);
+
+                              if (data == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Gagal memuat profil Chat'),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              // Panggil API startChat untuk mengirim sapaan penduduk (jika memang belum pernah chat)
+                              try {
+                                final startRes = await http.post(
+                                  Uri.parse("http://10.0.2.2:8000/api/chat/start"),
+                                  headers: {
+                                    "Authorization": "Bearer $token",
+                                    "Accept": "application/json",
+                                  },
+                                );
+
+                                // Tidak perlu force-handle responsnya — jika sudah pernah chat, backend akan return 200 tanpa membuat chat baru.
+                                print("startChat status: ${startRes.statusCode}");
+                              } catch (e) {
+                                print("startChat error: $e");
+                                // tetap lanjut ke chat page meskipun gagal, agar user tetap bisa chat
+                              }
 
                               Navigator.pushNamed(
                                 context,
                                 '/chatRoom',
                                 arguments: {
-                                  'userId': 1,
+                                  'userId': data['user_id'],
                                   'token': token,
-                                  'userAvatarUrl': "http://10.0.2.2:8000/storage/foto_user.jpg",
-                                  'adminAvatarUrl': "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+                                  'userAvatarUrl': data['avatar'],
+                                  'adminAvatarUrl': data['admin_avatar'],
+                                  'userName': data['name'],
+                                  'adminName': data['admin_name'],
                                 },
                               );
                             },
-
-                            child: const Text(
-                              "Ketuk untuk ngobrol",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                          child: const Text(
+                            "Ketuk untuk ngobrol",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
                         ),

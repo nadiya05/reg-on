@@ -14,16 +14,14 @@ class ChatMessage {
   required this.avatar,
   required this.createdAt,
 });
-
-
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
       id: json['id'],
       userId: json['user_id'],
       sender: json['sender'],
       message: json['message'],
-      avatar: json['avatar'],       // <—— baru
-      createdAt: json['created_at'], // <—— string jam siap pakai
+      avatar: json['avatar'],       
+      createdAt: json['created_at'], 
     );
   }
 }

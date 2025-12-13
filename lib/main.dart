@@ -107,11 +107,14 @@ class MyApp extends StatelessWidget {
         final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
 
         return ChatPage(
-          userId: args['userId'],
-          token: args['token'],
-          userAvatarUrl: args['userAvatarUrl'],
-          adminAvatarUrl: args['adminAvatarUrl'],
-        );
+        userId: args['userId'],
+        token: args['token'],
+        userAvatarUrl: args['userAvatarUrl'],
+        adminAvatarUrl: args['adminAvatarUrl'],
+        userName: args['userName'] ?? 'User',
+        adminName: args['adminName'] ?? 'Admin',
+      );
+
       },
         // 🔹 Tambahan route berita
         '/berita': (context) => const BerandaBerita(),
