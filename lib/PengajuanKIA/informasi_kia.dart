@@ -64,7 +64,19 @@ class _InformasiKIAState extends State<InformasiKIA> {
       setState(() => isLoading = false);
     }
   }
-
+  String formatJenisPengajuan(String value) {
+    return value
+        .split('_')
+        .map((word) {
+          if (word.toLowerCase() == 'kia') {
+            return 'KIA';
+          }
+          return word.isNotEmpty
+              ? word[0].toUpperCase() + word.substring(1).toLowerCase()
+              : word;
+        })
+        .join(' ');
+  }
   Widget buildCard(String title, String jenisDokumen, List<String> deskripsiList) {
     return Container(
       width: double.infinity,
@@ -122,7 +134,7 @@ class _InformasiKIAState extends State<InformasiKIA> {
                   children: [
                     for (var item in informasi)
                       buildCard(
-                        item['jenis_pengajuan'] ?? "-",
+                        formatJenisPengajuan(item['jenis_pengajuan'] ?? "-"),
                         item['jenis_dokumen'] ?? "-",
                         item['deskripsi'] is String
                             ? (item['deskripsi'] as String)

@@ -27,43 +27,48 @@ class _InformasiKKState extends State<InformasiKK> {
   }
 
   Future<void> fetchInformasi() async {
-    final token = await getToken();
-    if (token == null) {
-      setState(() => isLoading = false);
-      return;
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse("http://10.0.2.2:8000/api/informasi_kk"), // 🔹 endpoint KK
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> allData = data['data'] ?? [];
-
-        // 🔹 Filter jenis_dokumen = "kk"
-        final filteredData = allData
-            .where((item) =>
-                (item['jenis_dokumen']?.toString().toLowerCase() ?? '') ==
-                'kk')
-            .toList();
-
-        setState(() {
-          informasi = filteredData;
-          isLoading = false;
-        });
-      } else {
-        setState(() => isLoading = false);
-      }
-    } catch (e) {
-      setState(() => isLoading = false);
-    }
+  final token = await getToken();
+  if (token == null) {
+    setState(() => isLoading = false);
+    return;
   }
+
+  try {
+    final response = await http.get(
+      Uri.parse("http://10.0.2.2:8000/api/informasi_kk"),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+
+      setState(() {
+        informasi = data['data'] ?? [];
+        isLoading = false;
+      });
+    } else {
+      setState(() => isLoading = false);
+    }
+  } catch (e) {
+    setState(() => isLoading = false);
+  }
+}
+String formatJenisPengajuan(String value) {
+  return value
+      .split('_')
+      .map((word) {
+        if (word.toLowerCase() == 'kk') {
+          return 'KK';
+        }
+        return word.isNotEmpty
+            ? word[0].toUpperCase() + word.substring(1).toLowerCase()
+            : word;
+      })
+      .join(' ');
+}
 
   Widget buildCard(
       String title, String jenisDokumen, List<String> deskripsiList) {
@@ -124,7 +129,7 @@ class _InformasiKKState extends State<InformasiKK> {
                   children: [
                     for (var item in informasi)
                       buildCard(
-                        item['jenis_pengajuan'] ?? "-",
+                        formatJenisPengajuan(item['jenis_pengajuan'] ?? "-"),
                         item['jenis_dokumen'] ?? "-",
                         item['deskripsi'] is String
                             ? (item['deskripsi'] as String)

@@ -97,7 +97,7 @@ class BerandaPengajuanKK extends StatelessWidget {
                           context,
                           "Pengajuan\nKK",
                           onTap: () {
-                            Navigator.pushNamed(context, '/pengajuan-kk');
+                            Navigator.pushNamed(context, '/form-pengajuan-kk');
                           },
                         ),
                       ),

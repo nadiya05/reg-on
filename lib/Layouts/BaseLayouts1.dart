@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class BaseLayouts1 extends StatelessWidget {
-  final String title;       // judul halaman
-  final Widget child;       // konten isi
-  final bool showBack;      // apakah butuh tombol back
+  final String title;
+  final Widget child;
+  final bool showBack;
 
   const BaseLayouts1({
     super.key,
@@ -33,7 +33,7 @@ class BaseLayouts1 extends StatelessWidget {
                       onPressed: () => Navigator.pop(context),
                     )
                   else
-                    const SizedBox(width: 48), // biar simetris kalau ga ada back
+                    const SizedBox(width: 48),
 
                   Image.asset(
                     "assets/images/logo.png",
@@ -44,7 +44,7 @@ class BaseLayouts1 extends StatelessWidget {
               ),
             ),
 
-            // 🔹 ISI warna biru
+            // 🔹 ISI biru
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -56,23 +56,21 @@ class BaseLayouts1 extends StatelessWidget {
                   ),
                 ),
                 padding: const EdgeInsets.all(20),
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                child: Column(
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
-                      const SizedBox(height: 30),
+                    ),
+                    const SizedBox(height: 30),
 
-                      // isi halaman
-                      child,
-                    ],
-                  ),
+                    // ⬇️ ISI HALAMAN BIAR DIA SENDIRI YANG SCROLL
+                    Expanded(child: child),
+                  ],
                 ),
               ),
             ),

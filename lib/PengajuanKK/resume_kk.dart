@@ -39,7 +39,7 @@ class _ResumeKkPageState extends State<ResumeKkPage> {
 
     try {
       final res = await http.get(
-        Uri.parse("http://10.0.2.2:8000/api/pengajuan_kk/${widget.id}"),
+        Uri.parse("http://10.0.2.2:8000/api/pengajuan-kk/${widget.id}"),
         headers: {
           "Authorization": "Bearer $token",
           "Accept": "application/json",

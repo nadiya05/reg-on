@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:reg_on/PengajuanKIA/beranda_pengajuan_kia.dart';
+import 'package:reg_on/PengajuanKK/form_pengajuan_kk.dart';
 import 'package:reg_on/PengajuanKK/informasi_kk.dart';
 import 'package:reg_on/pages/PengajuanKTP/form_kehilangan.dart';
 import 'package:reg_on/pages/PengajuanKTP/form_pemula.dart';
@@ -97,8 +98,7 @@ class MyApp extends StatelessWidget {
         '/pengajuan-kk': (context) => const PengajuanKKBeranda(),
         '/pengajuanKK': (context) => const BerandaPengajuanKK(),
         '/informasiKK': (context) => const InformasiKK(),
-        '/pengajuan-kk/pemula': (context) => const FormPemulaKK(),
-        '/pengajuan-kk/ubah-status': (context) => const FormUbahStatusKK(),
+        '/form-pengajuan-kk': (context) => const FormPengajuanKK(),
         '/status_pengajuan_kk': (context) => const StatusKkPage(),
         '/status_pengajuan_all': (context) => const RiwayatPengajuanPage(),
         '/notifikasi': (context) => const NotifikasiPage(),
