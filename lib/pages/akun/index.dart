@@ -1,9 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:reg_on/pages/akun/edit.dart';
 
-class IndexPage extends StatelessWidget {
+class IndexPage extends StatefulWidget {
   final Map<String, dynamic> user;
   const IndexPage({super.key, required this.user});
+
+  @override
+  State<IndexPage> createState() => _IndexPageState();
+}
+
+class _IndexPageState extends State<IndexPage> {
+  late Map<String, dynamic> user;
+
+  @override
+  void initState() {
+    super.initState();
+    user = Map<String, dynamic>.from(widget.user);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,17 +24,21 @@ class IndexPage extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(0, 119, 182, 1),
-        iconTheme: const IconThemeData(color: Colors.white), 
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
               "Akun Saya",
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-            ), // jarak teks & logo
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             Image.asset(
               "assets/images/logo.png",
-              height: 95, // 👉 gedein disini (misal 40-50)
+              height: 95,
             ),
           ],
         ),
@@ -29,7 +46,7 @@ class IndexPage extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Bagian biru + foto
+            // ===== HEADER BIRU =====
             Container(
               color: const Color.fromRGBO(0, 119, 182, 1),
               padding: const EdgeInsets.only(top: 30, bottom: 20),
@@ -37,10 +54,13 @@ class IndexPage extends StatelessWidget {
               child: Column(
                 children: [
                   CircleAvatar(
-                    radius: 65, // agak besar biar kayak di gambar
-                    backgroundImage: user['foto'] != null && user['foto'].isNotEmpty
-                        ? NetworkImage("http://10.0.2.2:8000/storage/${user['foto']}")
-                        : const AssetImage("assets/images/profile.jpg") as ImageProvider,
+                    radius: 65,
+                    backgroundImage: user['foto'] != null && user['foto'].toString().isNotEmpty
+                        ? NetworkImage(
+                            "http://10.0.2.2:8000/storage/${user['foto']}",
+                          )
+                        : const AssetImage("assets/images/profile.jpg")
+                            as ImageProvider,
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -54,24 +74,26 @@ class IndexPage extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 30),
-            // Card putih
+
+            // ===== CARD PUTIH =====
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 30),
               padding: const EdgeInsets.all(20),
               width: double.infinity,
-              height: 400, // 👉 biar lebih panjang ke bawah
+              height: 400,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  spreadRadius: 2, // biar lebih melebar
-                  offset: Offset(0, 0), // tengah → nyebar ke semua arah
-                ),
-              ],
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                    offset: Offset(0, 0),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,37 +103,47 @@ class IndexPage extends StatelessWidget {
                   _buildInfoText(user['jenis_kelamin'] ?? "Jenis kelamin belum diisi"),
                   _buildInfoText(user['email'] ?? "Email belum diisi"),
                   _buildInfoText(user['no_telp'] ?? "No telepon belum diisi"),
-                  const Spacer(), // biar tombol Edit selalu di bawah
+                  const Spacer(),
                   const SizedBox(height: 40),
-           SizedBox(
-  width: double.infinity,
-  child: ElevatedButton(
-    onPressed: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => EditProfilePage(user: user), // ⬅️ class harus sama
-        ),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      backgroundColor: const Color.fromRGBO(0, 119, 182, 1),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-    child: const Text(
-      "Edit",
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-      ),
-    ),
-  ),
-)
 
+                  // ===== BUTTON EDIT =====
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final updatedUser = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditProfilePage(user: user),
+                          ),
+                        );
+
+                        if (updatedUser != null) {
+                          setState(() {
+                            user = Map<String, dynamic>.from(updatedUser);
+                          });
+
+                          // kirim balik ke page sebelumnya (drawer / beranda)
+                          Navigator.pop(context, user);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromRGBO(0, 119, 182, 1),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Edit",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -120,7 +152,6 @@ class IndexPage extends StatelessWidget {
       ),
     );
   }
-  
 
   Widget _buildInfoText(String text) {
     return Padding(

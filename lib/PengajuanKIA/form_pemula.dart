@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
 import 'package:reg_on/Layouts/BaseLayouts2.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 
 class FormKIA extends StatefulWidget {
   const FormKIA({super.key});
@@ -17,59 +18,101 @@ class FormKIA extends StatefulWidget {
 
 class _FormKIAState extends State<FormKIA> {
   final _formKey = GlobalKey<FormState>();
+
   final nikController = TextEditingController();
   final namaController = TextEditingController();
   final tanggalController = TextEditingController();
+
   final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+
+  static const Color primaryBlue = Color(0xFF0077B6);
 
   File? kkFile;
   File? aktaFile;
   File? suratNikahFile;
   File? ktpOrtuFile;
   File? passFotoFile;
-  bool _isLoading = false;
 
+  // =========================
+  // PICK IMAGE
+  // =========================
   Future<void> pickImage(String type) async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        switch (type) {
-          case 'kk':
-            kkFile = File(pickedFile.path);
-            break;
-          case 'akta':
-            aktaFile = File(pickedFile.path);
-            break;
-          case 'nikah':
-            suratNikahFile = File(pickedFile.path);
-            break;
-          case 'ktp_ortu':
-            ktpOrtuFile = File(pickedFile.path);
-            break;
-          case 'foto':
-            passFotoFile = File(pickedFile.path);
-            break;
-        }
-      });
-    }
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    final dir = await getApplicationDocumentsDirectory();
+    final ext = path.extension(picked.path);
+    final fileName =
+        '${DateTime.now().millisecondsSinceEpoch}_$type$ext';
+
+    final savedFile =
+        await File(picked.path).copy('${dir.path}/$fileName');
+
+    setState(() {
+      switch (type) {
+        case 'kk':
+          kkFile = savedFile;
+          break;
+        case 'akta':
+          aktaFile = savedFile;
+          break;
+        case 'nikah':
+          suratNikahFile = savedFile;
+          break;
+        case 'ktp_ortu':
+          ktpOrtuFile = savedFile;
+          break;
+        case 'foto':
+          passFotoFile = savedFile;
+          break;
+      }
+    });
   }
 
+  // =========================
+  // ADD FILE
+  // =========================
+  Future<void> addFile(
+    http.MultipartRequest request,
+    String key,
+    File? file,
+  ) async {
+    if (file == null) return;
+
+    final bytes = await file.readAsBytes();
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        key,
+        bytes,
+        filename: path.basename(file.path),
+        contentType: MediaType('image', 'jpeg'),
+      ),
+    );
+  }
+
+  // =========================
+  // SUBMIT
+  // =========================
   Future<void> submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (kkFile == null || aktaFile == null || ktpOrtuFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('KK, Akta Lahir, dan KTP Orang Tua wajib diunggah')),
+        const SnackBar(
+          content:
+              Text('KK, Akta Lahir, dan KTP Orang Tua wajib diunggah'),
+        ),
       );
       return;
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("token");
+    final token = prefs.getString('token');
 
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Token tidak ditemukan, silakan login ulang')),
+        const SnackBar(content: Text('Token tidak ditemukan')),
       );
       return;
     }
@@ -77,10 +120,15 @@ class _FormKIAState extends State<FormKIA> {
     setState(() => _isLoading = true);
 
     try {
-      var request = http.MultipartRequest(
+      final request = http.MultipartRequest(
         'POST',
         Uri.parse('http://10.0.2.2:8000/api/pengajuan-kia'),
       );
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      });
 
       request.fields.addAll({
         'jenis_kia': 'Pemula',
@@ -89,45 +137,17 @@ class _FormKIAState extends State<FormKIA> {
         'tanggal_pengajuan': tanggalController.text,
       });
 
-      // Upload file
-      Future<void> addFile(String key, File? file) async {
-        if (file != null) {
-          request.files.add(await http.MultipartFile.fromPath(
-            key,
-            file.path,
-            contentType: MediaType('image', 'jpeg'),
-          ));
-        }
-      }
+      await addFile(request, 'kk', kkFile);
+      await addFile(request, 'akta_lahir', aktaFile);
+      await addFile(request, 'surat_nikah', suratNikahFile);
+      await addFile(request, 'ktp_ortu', ktpOrtuFile);
+      await addFile(request, 'pass_foto', passFotoFile);
 
-      await addFile('kk', kkFile);
-      await addFile('akta_lahir', aktaFile);
-      await addFile('surat_nikah', suratNikahFile);
-      await addFile('ktp_ortu', ktpOrtuFile);
-      await addFile('pass_foto', passFotoFile);
-
-      request.headers.addAll({
-        "Accept": "application/json",
-        "Authorization": "Bearer $token",
-      });
-
-      var response = await request.send();
-      var respStr = await response.stream.bytesToString();
-      print('📩 Response: $respStr');
-
-      final responseData = jsonDecode(respStr);
+      final response = await request.send();
+      final respStr = await response.stream.bytesToString();
+      final data = jsonDecode(respStr);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final int? pengajuanId =
-            responseData['data']?['id'] ?? responseData['id'];
-
-        if (pengajuanId == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gagal mendapatkan ID pengajuan')),
-          );
-          return;
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Berhasil submit')),
         );
@@ -135,65 +155,80 @@ class _FormKIAState extends State<FormKIA> {
         Navigator.pushNamed(
           context,
           '/resume',
-          arguments: {'id': pengajuanId, 'jenis': 'KIA'},
+          arguments: {
+            'id': data['data']?['id'] ?? data['id'],
+            'jenis': 'KIA',
+          },
         );
       } else {
-        final errorMsg = responseData['message'] ?? 'Gagal submit data';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ $errorMsg')),
+          SnackBar(content: Text(data['message'] ?? 'Gagal submit')),
         );
       }
     } catch (e) {
-      print('❌ Error submitForm: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan: $e')),
+        SnackBar(content: Text('❌ Error: $e')),
       );
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
+  // =========================
+  // UI HELPERS (SAMA KK)
+  // =========================
   InputDecoration fieldDecoration(String label) {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: Colors.black87),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      contentPadding:
+          const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(30),
         borderSide: const BorderSide(color: Colors.black26),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(30),
-        borderSide: const BorderSide(color: Color(0xFF0077B6)),
+        borderSide: const BorderSide(color: primaryBlue),
       ),
     );
   }
 
   Widget filePicker(String label, File? file, String type) {
-    return Row(
-      children: [
-        ElevatedButton(
-          onPressed: () => pickImage(type),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0077B6),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        children: [
+          ElevatedButton(
+            onPressed: () => pickImage(type),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+              padding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 16,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white),
             ),
           ),
-          child: Text(label, style: const TextStyle(color: Colors.white)),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            file != null ? path.basename(file.path) : 'Belum ada file',
-            style: const TextStyle(color: Colors.black87),
-            overflow: TextOverflow.ellipsis,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              file != null
+                  ? path.basename(file.path)
+                  : 'Belum ada file',
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -201,7 +236,7 @@ class _FormKIAState extends State<FormKIA> {
     return ElevatedButton(
       onPressed: _isLoading ? null : submitForm,
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF0077B6),
+        backgroundColor: primaryBlue,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
@@ -209,10 +244,16 @@ class _FormKIAState extends State<FormKIA> {
       ),
       child: _isLoading
           ? const CircularProgressIndicator(color: Colors.white)
-          : const Text('KIRIM', style: TextStyle(fontSize: 16, color: Colors.white)),
+          : const Text(
+              'KIRIM',
+              style: TextStyle(fontSize: 16, color: Colors.white),
+            ),
     );
   }
 
+  // =========================
+  // BUILD
+  // =========================
   @override
   Widget build(BuildContext context) {
     return BaseLayouts2(
@@ -235,15 +276,13 @@ class _FormKIAState extends State<FormKIA> {
               validator: (v) => v!.isEmpty ? 'Nama wajib diisi' : null,
             ),
             const SizedBox(height: 15),
-
-            // 🗓️ Input Tanggal Pengajuan
             TextFormField(
               controller: tanggalController,
               readOnly: true,
               decoration: fieldDecoration('Tanggal Pengajuan'),
               onTap: () async {
                 FocusScope.of(context).unfocus();
-                DateTime? picked = await showDatePicker(
+                final picked = await showDatePicker(
                   context: context,
                   initialDate: DateTime.now(),
                   firstDate: DateTime(2020),
@@ -255,18 +294,13 @@ class _FormKIAState extends State<FormKIA> {
                 }
               },
               validator: (v) =>
-                  v!.isEmpty ? 'Tanggal Pengajuan wajib diisi' : null,
+                  v!.isEmpty ? 'Tanggal wajib diisi' : null,
             ),
-
             const SizedBox(height: 20),
-            filePicker('Upload Kartu Keluarga (KK)', kkFile, 'kk'),
-            const SizedBox(height: 10),
+            filePicker('Upload Kartu Keluarga', kkFile, 'kk'),
             filePicker('Upload Akta Lahir', aktaFile, 'akta'),
-            const SizedBox(height: 10),
-            filePicker('Upload Surat Nikah (Opsional)', suratNikahFile, 'nikah'),
-            const SizedBox(height: 10),
+            filePicker('Upload Surat Nikah', suratNikahFile, 'nikah'),
             filePicker('Upload KTP Orang Tua', ktpOrtuFile, 'ktp_ortu'),
-            const SizedBox(height: 10),
             filePicker('Upload Pas Foto Anak', passFotoFile, 'foto'),
             const SizedBox(height: 30),
             submitButton(),

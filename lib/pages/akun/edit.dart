@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EditProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -17,7 +18,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController nikController;
   late TextEditingController nameController;
   late TextEditingController genderController;
-  late TextEditingController addressController;
   late TextEditingController emailController;
   late TextEditingController phoneController;
 
@@ -28,8 +28,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.initState();
     nikController = TextEditingController(text: widget.user['nik']);
     nameController = TextEditingController(text: widget.user['name']);
-    genderController = TextEditingController(text: widget.user['jenis_kelamin']);
-    addressController = TextEditingController(text: widget.user['alamat']);
+    genderController =
+        TextEditingController(text: widget.user['jenis_kelamin']);
     emailController = TextEditingController(text: widget.user['email']);
     phoneController = TextEditingController(text: widget.user['no_telp']);
   }
@@ -43,51 +43,71 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-Future<void> _saveProfile() async {
-  var uri = Uri.parse("http://10.0.2.2:8000/api/kelola-akun/${widget.user['id']}");
+  Future<void> _saveProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
 
-  var request = http.MultipartRequest("POST", uri);
-  request.fields['_method'] = 'PUT'; // Laravel ngerti method spoofing
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Token tidak ditemukan, silakan login ulang")),
+      );
+      return;
+    }
 
-  request.fields['nik'] = nikController.text;
-  request.fields['name'] = nameController.text;
-  request.fields['jenis_kelamin'] = genderController.text;
-  request.fields['email'] = emailController.text;
-  request.fields['no_telp'] = phoneController.text;
+    var uri =
+        Uri.parse("http://10.0.2.2:8000/api/users/${widget.user['id']}");
 
-  if (_image != null) {
-    request.files.add(await http.MultipartFile.fromPath('foto', _image!.path));
-  }
-var response = await request.send();
+    var request = http.MultipartRequest("POST", uri);
+    request.fields['_method'] = 'PUT';
+
+    request.headers.addAll({
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    request.fields['nik'] = nikController.text;
+    request.fields['name'] = nameController.text;
+    request.fields['jenis_kelamin'] = genderController.text;
+    request.fields['email'] = emailController.text;
+    request.fields['no_telp'] = phoneController.text;
+
+    if (_image != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('foto', _image!.path),
+      );
+    }
+
+    final response = await request.send();
+
     if (response.statusCode == 200) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Profil berhasil diperbarui!")),
-    );
-    Navigator.pop(context, true);
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Gagal update profil! Status: ${response.statusCode}")),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profil berhasil diperbarui!")),
+      );
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+                Text("Gagal update profil (${response.statusCode})")),
+      );
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          "Edit Profil",
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text("Edit Profil",
+            style: TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: const Color.fromRGBO(0, 119, 182, 1),
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Bagian biru + foto
+            // Header + foto
             Container(
               color: const Color.fromRGBO(0, 119, 182, 1),
               padding: const EdgeInsets.symmetric(vertical: 20),
@@ -101,8 +121,11 @@ var response = await request.send();
                         backgroundImage: _image != null
                             ? FileImage(_image!)
                             : (widget.user['foto'] != null
-                                ? NetworkImage("http://10.0.2.2:8000/storage/${widget.user['foto']}")
-                                : const AssetImage("assets/images/profile.jpg") as ImageProvider),
+                                ? NetworkImage(
+                                    "http://10.0.2.2:8000/storage/${widget.user['foto']}")
+                                : const AssetImage(
+                                        "assets/images/profile.jpg")
+                                    as ImageProvider),
                       ),
                       Positioned(
                         bottom: 0,
@@ -112,7 +135,8 @@ var response = await request.send();
                           child: const CircleAvatar(
                             radius: 20,
                             backgroundColor: Colors.white,
-                            child: Icon(Icons.camera_alt, color: Colors.blue),
+                            child: Icon(Icons.camera_alt,
+                                color: Colors.blue),
                           ),
                         ),
                       ),
@@ -122,10 +146,9 @@ var response = await request.send();
                   Text(
                     widget.user['name'] ?? "Nama belum diisi",
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ],
               ),
@@ -133,19 +156,17 @@ var response = await request.send();
 
             const SizedBox(height: 20),
 
-            // Card putih + form
+            // Form
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
                   BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 2)),
                 ],
               ),
               child: Form(
@@ -155,7 +176,6 @@ var response = await request.send();
                     _buildTextField("NIK", nikController),
                     _buildTextField("Nama", nameController),
                     _buildTextField("Jenis Kelamin", genderController),
-                    _buildTextField("Alamat", addressController),
                     _buildTextField("Email", emailController),
                     _buildTextField("No Telepon", phoneController),
                     const SizedBox(height: 20),
@@ -164,19 +184,18 @@ var response = await request.send();
                       child: ElevatedButton(
                         onPressed: _saveProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromRGBO(0, 119, 182, 1),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor:
+                              const Color.fromRGBO(0, 119, 182, 1),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text(
-                          "Simpan",
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white),
-                        ),
+                        child: const Text("Simpan",
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
                       ),
                     ),
                   ],
@@ -198,11 +217,9 @@ var response = await request.send();
           hintText: hint,
           suffixIcon: const Icon(Icons.edit, color: Colors.grey),
           enabledBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey),
-          ),
+              borderSide: BorderSide(color: Colors.grey)),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue),
-          ),
+              borderSide: BorderSide(color: Colors.blue)),
         ),
       ),
     );

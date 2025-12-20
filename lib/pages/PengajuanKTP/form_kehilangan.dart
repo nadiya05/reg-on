@@ -2,11 +2,12 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:reg_on/Layouts/BaseLayouts2.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:reg_on/pages/PengajuanKTP/resume_ktp.dart';
 
 class FormKehilangan extends StatefulWidget {
   const FormKehilangan({super.key});
@@ -26,18 +27,29 @@ class _FormKehilanganState extends State<FormKehilangan> {
   File? suratKehilanganFile;
   bool _isLoading = false;
 
+  // ✅ COPY FILE KE DIRECTORY AMAN
+  Future<File> _copyToLocal(File file) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final newPath = path.join(dir.path, path.basename(file.path));
+    return file.copy(newPath);
+  }
+
+  // ✅ PICK IMAGE (ANTI ERROR CACHE)
   Future<void> pickImage(String type) async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      final copiedFile = await _copyToLocal(File(picked.path));
       setState(() {
-        if (type == 'kk') kkFile = File(pickedFile.path);
-        if (type == 'surat') suratKehilanganFile = File(pickedFile.path);
+        if (type == 'kk') kkFile = copiedFile;
+        if (type == 'surat') suratKehilanganFile = copiedFile;
       });
     }
   }
 
+  // ✅ SUBMIT FORM (SAMA SEPERTI PEMULA)
   Future<void> submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (kkFile == null || suratKehilanganFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('KK dan Surat Kehilangan wajib diisi')),
@@ -47,6 +59,7 @@ class _FormKehilanganState extends State<FormKehilangan> {
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
+
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Token tidak ditemukan, silakan login ulang')),
@@ -69,31 +82,30 @@ class _FormKehilanganState extends State<FormKehilangan> {
         'tanggal_pengajuan': tanggalController.text,
       });
 
-      request.files.add(await http.MultipartFile.fromPath(
-        'kk',
-        kkFile!.path,
-        contentType: MediaType('image', 'jpeg'),
-      ));
+      request.files.add(
+        await http.MultipartFile.fromPath('kk', kkFile!.path),
+      );
 
-      request.files.add(await http.MultipartFile.fromPath(
-        'surat_kehilangan',
-        suratKehilanganFile!.path,
-        contentType: MediaType('image', 'jpeg'),
-      ));
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'surat_kehilangan',
+          suratKehilanganFile!.path,
+        ),
+      );
 
       request.headers.addAll({
         "Accept": "application/json",
         "Authorization": "Bearer $token",
       });
 
-      var response = await request.send();
-      var respStr = await response.stream.bytesToString();
-      print('Response: $respStr');
-
-      final responseData = jsonDecode(respStr);
+      final response = await request.send();
+      final respStr = await response.stream.bytesToString();
+      final data = jsonDecode(respStr);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final int? pengajuanId = responseData['data']?['id'];
+        final int? pengajuanId =
+            data['data']?['id'] ?? data['id'];
+
         if (pengajuanId == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Gagal mendapatkan ID pengajuan')),
@@ -105,19 +117,19 @@ class _FormKehilanganState extends State<FormKehilangan> {
           const SnackBar(content: Text('Berhasil submit')),
         );
 
-        Navigator.pushNamed(
+        // ✅ KE RESUME (SAMA DENGAN PEMULA)
+        Navigator.push(
           context,
-          '/resume',
-          arguments: {'id': pengajuanId, 'jenis': 'ktp'},
+          MaterialPageRoute(
+            builder: (context) => ResumeKtpPage(id: pengajuanId),
+          ),
         );
       } else {
-        final errorMsg = responseData['message'] ?? 'Gagal submit data';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMsg)),
+          SnackBar(content: Text(data['message'] ?? 'Gagal submit data')),
         );
       }
     } catch (e) {
-      print('❌ Error submitForm: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Terjadi kesalahan: $e')),
       );
@@ -129,13 +141,11 @@ class _FormKehilanganState extends State<FormKehilangan> {
   InputDecoration fieldDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.black87),
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(30),
-        borderSide: const BorderSide(color: Colors.black26),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(30),
@@ -151,7 +161,6 @@ class _FormKehilanganState extends State<FormKehilangan> {
           onPressed: () => pickImage(type),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0077B6),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(30),
             ),
@@ -162,7 +171,6 @@ class _FormKehilanganState extends State<FormKehilangan> {
         Expanded(
           child: Text(
             file != null ? path.basename(file.path) : 'Belum ada',
-            style: const TextStyle(color: Colors.black87),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -182,10 +190,7 @@ class _FormKehilanganState extends State<FormKehilangan> {
       ),
       child: _isLoading
           ? const CircularProgressIndicator(color: Colors.white)
-          : const Text(
-              'KIRIM',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
+          : const Text('KIRIM', style: TextStyle(color: Colors.white)),
     );
   }
 
@@ -216,7 +221,6 @@ class _FormKehilanganState extends State<FormKehilangan> {
               decoration: fieldDecoration('Tanggal Pengajuan'),
               readOnly: true,
               onTap: () async {
-                FocusScope.of(context).unfocus();
                 DateTime? picked = await showDatePicker(
                   context: context,
                   initialDate: DateTime.now(),
@@ -229,7 +233,7 @@ class _FormKehilanganState extends State<FormKehilangan> {
                 }
               },
               validator: (v) =>
-                  v!.isEmpty ? 'Tanggal Pengajuan wajib diisi' : null,
+                  v!.isEmpty ? 'Tanggal wajib diisi' : null,
             ),
             const SizedBox(height: 20),
             filePicker('Upload KK', kkFile, 'kk'),
